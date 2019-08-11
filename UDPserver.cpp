@@ -72,7 +72,7 @@ bool seqIsAvailable()
 //************************************ 
 void timeoutHandler()
 {
-	printf("Timer out error.\n");
+	printf("连接超时.\n");
 	int index;
 	for (int i = 0; i < SEND_WIND_SIZE; ++i){
 		index = (i + curAck) % SEQ_SIZE;
@@ -94,7 +94,7 @@ void timeoutHandler()
 void ackHandler(char c)
 {
 	unsigned char index = (unsigned char)c - 1;//序列号 - 1
-	printf("server:::Recv a ack of %d\n", index + 1);//序号发送方和接收方应该统一，发送的是+1过的，接收方Ack+1过的，在这里打印没必要还原
+	printf("服务器:::接受到 ack： %d\n", index + 1);//序号发送方和接收方应该统一，发送的是+1过的，接收方Ack+1过的，在这里打印没必要还原
 	if (curAck <= index){
 		for (int i = curAck; i <= index; ++i){
 			ack[i] = TRUE;
@@ -119,15 +119,15 @@ int main(int argc, char*argv[]){     //加载套接字库（必须！！）
 	wVersionRequested = MAKEWORD(2, 2); //加载 dll 文件 Socket 库
 	err = WSAStartup(wVersionRequested, &wsaData);
 	if (err != 0) {    //找不到 winsock.dll s
-		printf("WSAStartup failed with error: %d\n", err);
+		printf("WSAStartup  失败，错误信息： %d\n", err);
 		return -1;
 	}
 	if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2){   //LOBYTE:得到一个16bit数最低（最右边）那个字节;HIBYTE:得到一个16bit数最高（最左边）那个字节    //当LOBYTE, HIBYTE应用于32bit数时, 实际上这时应该用于32bit数的后16bit.
-		printf("Could not find a usable version of Winsock.dll\n");
+		printf("找不到可用的 Winsock.dll 版本\n");
 		WSACleanup();
 	}
 	else{
-		printf("The Winsock 2.2 dll was found okay\n");
+		printf("Winsock 2.2 dll 匹配成功\n");
 	}
 	SOCKET sockServer = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //设置套接字为非阻塞模式
 	int iMode = 1; // 1：非阻塞，0：阻塞
@@ -143,7 +143,7 @@ int main(int argc, char*argv[]){     //加载套接字库（必须！！）
 	err = bind(sockServer, (SOCKADDR*)&addrServer, sizeof(SOCKADDR));
 	if (err){
 		err = GetLastError();
-		printf("Could not bind the port %d for socket.Error code is %d\n", SERVER_PORT, err);
+		printf("无法为套接字绑定端口： %d.错误代码：%d\n", SERVER_PORT, err);
 		WSACleanup(); 
 		return -1;
 	}
@@ -168,12 +168,12 @@ int main(int argc, char*argv[]){     //加载套接字库（必须！！）
 			Sleep(200);
 			continue;
 		}
-		printf("recv from client:%s\n", buffer);
+		printf("从客户端接收：%s\n", buffer);
 		if (strcmp(buffer, "-time") == 0){
 			getCurTime(buffer);
 		}
 		else if (strcmp(buffer, "-quit") == 0){
-			strcpy_s(buffer, strlen("Good bye and happy life!") + 1, "Good bye and happy life!");
+			strcpy_s(buffer, strlen("生活愉快！再见") + 1, "生活愉快！再见");
 		}
 		else if (strcmp(buffer, "-testgbn") == 0){
 			//进入 GBN 测试阶段
@@ -183,12 +183,12 @@ int main(int argc, char*argv[]){     //加载套接字库（必须！！）
 			ZeroMemory(buffer, sizeof(buffer));
 			int recvSize;
 			int waitCount = 0;
-			printf("Begain to test GBN protocol,please don't abort the process\n");
+			printf("开始测试GBN协议，请不要中止进程\n");
 			//加入一个握手阶段
 			//首先服务器向客户端发送一个 205 大小的状态码（自定义） 表示服务器准备好了，可以发送数据
 			//客户端收到 205 之后回复一个 200 大小的状态码，表示客户端准备好了， 可以接受数据
 			//服务器收到 200 状态码之后，就开始使用 GBN 发送数据
-			printf("Shake hands stage running\n");
+			printf("握手阶段运行中\n");
 			int stage = 0;
 			bool runFlag = true;
 			while (runFlag){
@@ -205,7 +205,7 @@ int main(int argc, char*argv[]){     //加载套接字库（必须！！）
 						++waitCount;
 						if (waitCount > 20){
 							runFlag = false;
-							printf("TImeout error\n");
+							printf("连接超时\n");
 							break;
 						}
 						Sleep(500);
@@ -213,8 +213,8 @@ int main(int argc, char*argv[]){     //加载套接字库（必须！！）
 					}
 					else{
 						if ((unsigned char)buffer[0] == 200){ //客户端返回200状态码，连接建立成功，初始化全局数据并进入数据传输阶段
-							printf("Shake hands successfully, begin a file transfer\n");
-							printf("File size is %dB, each packet is 1024B and packet total num is %d\n", sizeof(data), totalPacket);
+							printf("握手成功，开始文件传输\n");
+							printf("文件大小为：%dB，每个包为：1024B，包总数为：%d\n", sizeof(data), totalPacket);
 							curSeq = 0;
 							curAck = 0;
 							totalSeq = 0;
@@ -234,7 +234,7 @@ int main(int argc, char*argv[]){     //加载套接字库（必须！！）
 						//为简化过程此处并未实现 - - - - - - - - - - - - - - - -套你猴子一会加
 						buffer[1] = recvSeq;
 						memcpy(&buffer[2], data + 1024 * totalSeq, 1024);
-						printf("server:::send a packet with a seq of %d, ack of %d \n", curSeq + 1, buffer[1]);
+						printf("服务器:::发送一个seq：%d, ack：%d 的包\n", curSeq + 1, buffer[1]);
 						sendto(sockServer, buffer, BUFFER_LENGTH, 0, (SOCKADDR*)&addrClient, sizeof(SOCKADDR));
 						++curSeq;
 						curSeq %= SEQ_SIZE;
@@ -259,12 +259,12 @@ int main(int argc, char*argv[]){     //加载套接字库（必须！！）
 							if (waitSeq == 20){
 								waitSeq = 1;
 							}
-							printf("server:::Recv a client packet of %d\n", seq);//打印来自客户端数据的序号
+							printf("服务器:::接收到客户端包seq：%d\n", seq);//打印来自客户端数据的序号
 							ackHandler(buffer[0]);
 						}
 						else
 						{//没有接收到数据
-							printf("server:::Recv a client packet of %d\n", seq);//打印来自客户端数据的序号
+							printf("服务器:::接收到客户端包seq：%d\n", seq);//打印来自客户端数据的序号
 							ackHandler(buffer[0]);
 						}
 						Sleep(500);

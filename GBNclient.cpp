@@ -51,11 +51,11 @@ void ackHandler(char c)
 {
 	if (c == 0)
 	{
-		printf("client:::server's first package do not have ack!\n");
+		printf("客户端:::服务器的第一个包没有ack!\n");
 		return;
 	}
 	unsigned char index = (unsigned char)c - 1;//序列号减一
-	printf("client:::Recv a ack of %d\n", index + 1);//序号发送方和接收方应该统一，发送的是 + 1过的，接收方Ack + 1过的，在这里打印没必要还原
+	printf("客户端:::收到一个ACK：%d\n", index + 1);//序号发送方和接收方应该统一，发送的是 + 1过的，接收方Ack + 1过的，在这里打印没必要还原
 	if (cl_curAck <= index){
 		for (int i = cl_curAck; i <= index; ++i){
 			cl_ack[i] = TRUE;
@@ -97,9 +97,10 @@ bool seqIsAvailable()
 /****************************************************************/
 void printTips(){
 	printf("*****************************************\n");
-	printf("| -time to get current time |\n");
-	printf("| -quit to exit client |\n");
-	printf("| -testgbn [X] [Y] to test the gbn |\n");
+	printf("|-------- -time 获取当前时间 ------------|\n");
+	printf("|-------- -quit 退出客户端 --------------|\n");
+	printf("|-------- -testgbn [X] [Y] 来测试gbn连接 |\n");
+	printf("|-------- [X]值为丢包率,[Y]值为ack丢失率 |\n");
 	printf("*****************************************\n");
 }
 
@@ -131,22 +132,22 @@ int main(int argc, char* argv[]){
 	err = WSAStartup(wVersionRequester, &wsaData);
 	if (err != 0){
 		//找不到winsock.dll
-		printf("WSAStartup failed with error: %d\n", err);
+		printf("WSAStartup 失败，错误信息： %d\n", err);
 		return 1;
 	}
 	if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2){
-		printf("Could not find a usable version of Winsock.dll\n");
+		printf("找不到可用的 Winsock.dll 版本\n");
 		WSACleanup;
 	}
 	else{
-		printf("THe Winsock 2.2 dll was found okay\n");
+		printf("Winsock 2.2 dll 匹配成功\n");
 	}
 	SOCKET socketClient = socket(AF_INET, SOCK_DGRAM, 0);
 	SOCKADDR_IN addrServer;
 	addrServer.sin_addr.S_un.S_addr = inet_addr(SERVER_IP);
 	addrServer.sin_family = AF_INET;
-	addrServer.sin_port = htons(SERVER_PORT);//接收缓冲区
-	char buffer[BUFFER_LENGTH];
+	addrServer.sin_port = htons(SERVER_PORT);
+	char buffer[BUFFER_LENGTH];//接收缓冲区
 	ZeroMemory(buffer, sizeof(buffer));
 	int len = sizeof(SOCKADDR);
 	//为了测试与服务器的链接，可以使用 -time 命令从服务器端获得当前时间
@@ -181,8 +182,8 @@ int main(int argc, char* argv[]){
 		ret = sscanf(buffer, "%s%f%f", &cmd, &packetLossRatio, &ackLossRatio);
 		//开始 GBN 测试，使用 GBN 协议实现 UDP 可靠文件传输
 		if (!strcmp(cmd, "-testgbn")){
-			printf("%s\n", "Begin to test GBN protocol, please don't abort the process");
-			printf("The loss ratio of packet is %.2f,the loss ratio of ack is %.2f\n", packetLossRatio, ackLossRatio);
+			printf("%s\n", "开始测试GBN协议，请不要中止进程");
+			printf("当前设定丢包率为  %.2f,ACK丢失率为 %.2f\n", packetLossRatio, ackLossRatio);
 			int waitCount = 0;
 			int stage = 0;
 			BOOL b;
@@ -198,7 +199,7 @@ int main(int argc, char* argv[]){
 				case 0://等待握手阶段
 					u_code = (unsigned char)buffer[0];
 					if ((unsigned char)buffer[0] == 205){
-						printf("Ready for file transmission\n");
+						printf("文件传输准备就绪 \n");
 						buffer[0] = 200;
 						buffer[1] = '\0';
 						sendto(socketClient, buffer, 2, 0, (SOCKADDR*)&addrServer, sizeof(SOCKADDR));
@@ -215,11 +216,11 @@ int main(int argc, char* argv[]){
 					//随机法模拟包是否丢失
 					b = lossInLossRatio(packetLossRatio);
 					if (b){
-						printf("The packet with a seq of %d loss\n", seq);
+						printf("*********************seq 包 %d 丢失*******************\n", seq);
 						ackHandler((unsigned short)buffer[1]);
 						continue;
 					}
-					printf("client:::recv a packet with a seq of %d\n", seq);
+					printf("客户端::: 接受到一个带有 seq 的包 %d\n", seq);
 					//如果是期待的包，正确接受，正常确认即可 接受时同时发送构造数据并发送
 					if (waitSeq - seq == 0){
 						++waitSeq;
@@ -261,7 +262,7 @@ int main(int argc, char* argv[]){
 					}
 					b = lossInLossRatio(ackLossRatio);
 					if (b){
-						printf("The ack of %d loss\n", (unsigned char)buffer[0]);
+						printf("*********************ACK包 %d 丢失*******************\n", (unsigned char)buffer[0]);
 						if (cl_curSeq == 0){
 							cl_curSeq = 19;
 							cl_ack[cl_curSeq] = TRUE;
@@ -274,7 +275,7 @@ int main(int argc, char* argv[]){
 						continue;
 					}
 					sendto(socketClient, buffer, 2, 0 , (SOCKADDR*)&addrServer, sizeof(SOCKADDR));
-					printf("client:::send a ack of %d,seq of %d\n", (unsigned char)buffer[0], (unsigned char)buffer[1]);
+					printf("客户端:::发送一个seq：%d, ack：%d 的包\n", (unsigned char)buffer[0], (unsigned char)buffer[1]);
 					break;
 				}
 				Sleep(500);
@@ -283,7 +284,7 @@ int main(int argc, char* argv[]){
 		sendto(socketClient, buffer, strlen(buffer) + 1, 0, (SOCKADDR*)&addrServer, sizeof(SOCKADDR));
 		ret = recvfrom(socketClient, buffer, BUFFER_LENGTH, 0, (SOCKADDR*)&addrServer, &len);
 		printf("%s\n", buffer);
-		if (!strcmp(buffer, "Good bye and happy life!")){
+		if (!strcmp(buffer, "生活愉快！再见")){
 			break;
 		}
 		//printTips();
