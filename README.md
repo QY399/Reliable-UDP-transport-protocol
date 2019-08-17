@@ -30,6 +30,14 @@
 
 ### 二、超时重传  
 ```
+	waitCount++; //20 次等待 ack 则超时重传'
+	if (waitCount > 20){
+		timeoutHandler();
+		waitCount = 0;
+	}
+```
+在等待ACK超过20次时，视为超时，此时需要重发滑动窗口内的所有数据包。
+```
    //************************************ 
    // Method: timeoutHandler 
    // FullName: timeoutHandler 
@@ -81,3 +89,9 @@ while (runFlag){
 	int iMode = 1; // 1：非阻塞，0：阻塞
 	ioctlsocket(sockServer, FIONBIO, (u_long FAR*) &iMode);//非阻塞时设置
 ```
+
+
+
+
+[版本 1.0](https://github.com/QY399/Reliable-UDP-transport-protocol/blob/master/UDPserver.cpp)
+----------------------------------实现基本功能和测试client、server
